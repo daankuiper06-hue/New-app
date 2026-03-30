@@ -1,97 +1,83 @@
-import Link from "next/link";
-import { notFound } from "next/navigation";
-import { PageHeader } from "@/components/page-header";
 import { prisma } from "@/lib/prisma";
-import { decimalToNumber, euro, toInputDate } from "@/lib/utils";
 
-export default async function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-
+export default async function InvoicePage({ params }: any) {
   const invoice = await prisma.invoice.findUnique({
-    where: { id },
-    include: { customer: true, project: true, items: true }
+    where: { id: params.id },
+    include: {
+      customer: true,
+      project: true,
+      items: true,
+    },
   });
 
-  if (!invoice) notFound();
+  if (!invoice) {
+    return <div>Factuur niet gevonden</div>;
+  }
 
   return (
-    <div>
-      <PageHeader
-        title={invoice.title}
-        description="Factuurdetail met materiaalregels, btw-bedrag en totaal."
-        action={
-          <Link href="/invoices" className="rounded-2xl border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50">
-            Terug naar facturen
-          </Link>
-        }
-      />
+    <div className="max-w-4xl mx-auto bg-white p-8 rounded-xl shadow">
+      <h1 className="text-2xl font-semibold mb-4">Factuur</h1>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_20rem]">
-        <div className="rounded-3xl bg-white p-6 shadow-soft">
-          <div className="grid gap-4 md:grid-cols-3">
-            <div>
-              <p className="text-sm text-slate-500">Datum</p>
-              <p className="mt-1 font-medium">{toInputDate(invoice.invoiceDate)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">Klant</p>
-              <p className="mt-1 font-medium">{invoice.customer?.name ?? "-"}</p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">Project</p>
-              <p className="mt-1 font-medium">{invoice.project?.name ?? "-"}</p>
-            </div>
-          </div>
+      {/* KLANT */}
+      <div className="mb-6">
+        <p className="font-medium">{invoice.customer.name}</p>
+        <p className="text-sm text-gray-500">
+          Datum: {new Date(invoice.createdAt).toLocaleDateString()}
+        </p>
+      </div>
 
-          <div className="mt-6 overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="border-b border-slate-200 text-slate-500">
-                <tr>
-                  <th className="py-3 pr-4">Omschrijving</th>
-                  <th className="py-3 pr-4">Aantal</th>
-                  <th className="py-3 pr-4">Prijs p/st</th>
-                  <th className="py-3 pr-4">BTW %</th>
-                  <th className="py-3 pr-4">BTW bedrag</th>
-                  <th className="py-3 pr-4">Subtotaal</th>
-                </tr>
-              </thead>
-              <tbody>
-                {invoice.items.map((item) => (
-                  <tr key={item.id} className="border-b border-slate-100 last:border-0">
-                    <td className="py-3 pr-4 font-medium">{item.description}</td>
-                    <td className="py-3 pr-4">{decimalToNumber(item.quantity)}</td>
-                    <td className="py-3 pr-4">{euro(decimalToNumber(item.unitPrice))}</td>
-                    <td className="py-3 pr-4">{decimalToNumber(item.vatRate)}%</td>
-                    <td className="py-3 pr-4">{euro(decimalToNumber(item.vatAmount))}</td>
-                    <td className="py-3 pr-4">{euro(decimalToNumber(item.lineTotal))}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+      {/* TABEL */}
+      <table className="w-full text-sm border">
+        <thead className="bg-gray-100">
+          <tr>
+            <th className="text-left p-2">Omschrijving</th>
+            <th className="text-left p-2">Aantal</th>
+            <th className="text-left p-2">Prijs p.s. incl btw</th>
+            <th className="text-left p-2">Subtotaal incl btw</th>
+            <th className="text-left p-2">BTW bedrag</th>
+          </tr>
+        </thead>
 
-          {invoice.notes ? (
-            <div className="mt-6 rounded-2xl bg-slate-50 p-4">
-              <p className="text-sm text-slate-500">Notities</p>
-              <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{invoice.notes}</p>
-            </div>
-          ) : null}
-        </div>
+        <tbody>
+          {invoice.items.map((item) => {
+            const subtotal = item.quantity * item.priceIncl;
+            const vatAmount = subtotal - subtotal / (1 + item.vat / 100);
 
-        <div className="space-y-4">
-          <div className="rounded-3xl bg-white p-6 shadow-soft">
-            <p className="text-sm text-slate-500">Subtotaal excl. btw</p>
-            <p className="mt-2 text-2xl font-semibold">{euro(decimalToNumber(invoice.subtotal))}</p>
-          </div>
-          <div className="rounded-3xl bg-white p-6 shadow-soft">
-            <p className="text-sm text-slate-500">BTW totaal</p>
-            <p className="mt-2 text-2xl font-semibold">{euro(decimalToNumber(invoice.vatTotal))}</p>
-          </div>
-          <div className="rounded-3xl bg-slate-950 p-6 text-white shadow-soft">
-            <p className="text-sm text-slate-400">Totaal incl. btw</p>
-            <p className="mt-2 text-3xl font-semibold">{euro(decimalToNumber(invoice.total))}</p>
-          </div>
-        </div>
+            return (
+              <tr key={item.id} className="border-t">
+                <td className="p-2">{item.name}</td>
+                <td className="p-2">{item.quantity}</td>
+                <td className="p-2">€{item.priceIncl.toFixed(2)}</td>
+                <td className="p-2">€{subtotal.toFixed(2)}</td>
+                <td className="p-2">€{vatAmount.toFixed(2)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+
+      {/* TOTALEN */}
+      <div className="mt-6 text-right">
+        {(() => {
+          const totalIncl = invoice.items.reduce(
+            (sum, item) => sum + item.quantity * item.priceIncl,
+            0
+          );
+
+          const totalVat = invoice.items.reduce((sum, item) => {
+            const subtotal = item.quantity * item.priceIncl;
+            return sum + (subtotal - subtotal / (1 + item.vat / 100));
+          }, 0);
+
+          return (
+            <>
+              <p className="text-sm">BTW totaal: €{totalVat.toFixed(2)}</p>
+              <p className="text-lg font-semibold">
+                Totaal incl btw: €{totalIncl.toFixed(2)}
+              </p>
+            </>
+          );
+        })()}
       </div>
     </div>
   );
