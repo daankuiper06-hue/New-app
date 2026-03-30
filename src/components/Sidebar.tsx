@@ -25,7 +25,7 @@ export default function Sidebar() {
           return (
             <Link
               key={link.href}
-              href={link.href}
+              href={link.href as any}
               className={active ? "nav-link active" : "nav-link"}
             >
               {link.label}
