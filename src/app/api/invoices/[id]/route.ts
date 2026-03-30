@@ -2,12 +2,14 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(
-  _request: Request,
-  { params }: { params: { id: string } }
+  request: Request,
+  context: { params: { id: string } }
 ) {
   try {
+    const id = context.params.id;
+
     const invoice = await prisma.invoice.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         customer: true,
         project: true,
@@ -24,10 +26,8 @@ export async function GET(
 
     return NextResponse.json(invoice);
   } catch (error) {
-    console.error("Fout bij ophalen factuur:", error);
-
     return NextResponse.json(
-      { error: "Er is iets misgegaan bij het ophalen van de factuur" },
+      { error: "Server fout" },
       { status: 500 }
     );
   }
