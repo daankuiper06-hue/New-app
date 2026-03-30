@@ -22,7 +22,7 @@ export function Sidebar() {
         {links.map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
-            href={href}
+            href={href as any}
             className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-200 hover:bg-slate-800"
           >
             <Icon className="h-5 w-5" />
