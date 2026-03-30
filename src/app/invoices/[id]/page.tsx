@@ -32,11 +32,15 @@ type Invoice = {
   items: InvoiceItem[];
 };
 
-export default function InvoicePage({
+export default async function InvoicePage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
+
+  // hier jouw bestaande code
+}
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
