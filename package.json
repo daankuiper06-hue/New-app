@@ -23,6 +23,8 @@
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "zod": "^3.24.2"
+    "jspdf": "^2.5.1",
+    "html2canvas": "^1.4.1"
   },
   "devDependencies": {
     "@types/node": "^22.13.10",
