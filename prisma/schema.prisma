@@ -8,60 +8,72 @@ datasource db {
 }
 
 model Customer {
-  id        String    @id @default(cuid())
+  id        String   @id @default(cuid())
   name      String
   email     String?
   phone     String?
-  address   String?
+  createdAt DateTime @default(now())
+
   projects  Project[]
   invoices  Invoice[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
 }
 
 model Project {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   name        String
-  description String?
-  status      ProjectStatus @default(ACTIVE)
-  customerId  String?
-  customer    Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerId  String
+  createdAt   DateTime @default(now())
+
+  customer    Customer @relation(fields: [customerId], references: [id])
+
+  timeEntries TimeEntry[]
+  calculations CalculationItem[]
   invoices    Invoice[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+}
+
+model TimeEntry {
+  id        String   @id @default(cuid())
+  projectId String
+  date      DateTime
+  hours     Float
+  note      String?
+
+  project   Project @relation(fields: [projectId], references: [id])
+}
+
+model CalculationItem {
+  id        String  @id @default(cuid())
+  projectId String
+
+  name      String
+  quantity  Int
+  buyPrice  Float
+  sellPrice Float
+  vat       Float
+
+  project   Project @relation(fields: [projectId], references: [id])
 }
 
 model Invoice {
-  id           String        @id @default(cuid())
-  invoiceDate  DateTime      @default(now())
-  title        String
-  notes        String?
-  customerId   String?
-  customer     Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  projectId    String?
-  project      Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  subtotal     Decimal       @db.Decimal(10, 2)
-  vatTotal     Decimal       @db.Decimal(10, 2)
-  total        Decimal       @db.Decimal(10, 2)
-  items        InvoiceItem[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id         String   @id @default(cuid())
+  customerId String
+  projectId  String?
+  createdAt  DateTime @default(now())
+
+  customer   Customer @relation(fields: [customerId], references: [id])
+  project    Project? @relation(fields: [projectId], references: [id])
+
+  items      InvoiceItem[]
 }
 
 model InvoiceItem {
-  id          String   @id @default(cuid())
-  invoiceId   String
-  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  description String
-  quantity    Decimal  @db.Decimal(10, 2)
-  unitPrice   Decimal  @db.Decimal(10, 2)
-  vatRate     Decimal  @db.Decimal(5, 2)
-  lineTotal   Decimal  @db.Decimal(10, 2)
-  vatAmount   Decimal  @db.Decimal(10, 2)
-}
+  id        String  @id @default(cuid())
+  invoiceId String
 
-enum ProjectStatus {
-  ACTIVE
-  WAITING
-  COMPLETED
+  name      String
+  quantity  Int
+  priceIncl Float
+  vat       Float
+
+  invoice   Invoice @relation(fields: [invoiceId], references: [id])
 }
