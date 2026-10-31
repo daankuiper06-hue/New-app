@@ -38,3 +38,10 @@ test('editing historical hours preserves unknown labor classification',async()=>
  const select=app.innerHTML.match(/<select[^>]+name="arbeidstype"[^>]*>([\s\S]*?)<\/select>/)[1];
  assert.match(select,/<option value="" selected>/);
 });
+test('new materials default to inclusive VAT without changing old unknown rows',async()=>{
+ await click({action:'new',type:'product',id:''});
+ for(const name of ['prijsbasis','inkoopbasis']){
+  const choices=app.innerHTML.match(new RegExp(`<select[^>]+name="${name}"[^>]*>([\\s\\S]*?)</select>`))[1];
+  assert.match(choices,/<option value="incl" selected>/);
+ }
+});

@@ -61,3 +61,10 @@ test('project settings classify old lines once and preserve line-specific overri
  m.data.prijsbasis='excl';c=calculation(job,[m,h]);assert.equal(c.net,171);
  assert.ok(!('arbeidstype' in h.data));
 });
+test('confirmed inclusive hourly sales subtract exclusive hired costs',()=>{
+ const job=mk('project','p',{prijsbasis:'incl',inkoopbasis:'incl'});
+ const hired=mk('uur','h',{aantal_uren:2,uurtarief:35,prijsbasis:'incl',arbeidstype:'inhuur',kostentarief:25},'p');
+ const c=calculation(job,[hired]);
+ assert.equal(c.gross,70);assert.equal(c.net,57.85);assert.equal(c.cost,50);assert.equal(c.result,7.85);
+ assert.equal(hired.data.aantal_uren,2);assert.equal(hired.data.uurtarief,35);
+});
