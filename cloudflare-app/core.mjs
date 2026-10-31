@@ -10,6 +10,17 @@ export function storedReceipt(r) {
     subtotal:amount('subtotaal'),tax:amount('btw_bedrag'),total:amount('totaal'),status:d.status || '',
     includesHours:d.include_uren===true || d.include_uren==='true'};
 }
+export function storedProjectLines(project, records, includeHours=true) {
+  const p=data(project);
+  return records.filter(r=>!data(r).archived && (r.project_legacy_id || data(r).project_id)===idOf(project) &&
+    (r.record_type==='materiaal' || (includeHours && r.record_type==='uur'))).map(r=>{
+    const d=data(r),material=r.record_type==='materiaal';
+    const qty=number(material?d.aantal:d.aantal_uren),price=number(material?d.verkoopprijs:d.uurtarief);
+    return {id:r.id,name:material?d.naam:('Arbeid — '+(d.omschrijving||'werkzaamheden')),
+      qty,price,amount:round(qty*price),basis:d.prijsbasis || (material?p.materiaalprijsbasis:p.uurprijsbasis) || p.prijsbasis || '',
+      kind:r.record_type,vat:d.btw_percentage ?? null};
+  });
+}
 export const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function number(value, label='Getal') {
   const n = typeof value === 'number' ? value : Number(String(value).trim().replace(',', '.'));
@@ -30,18 +41,20 @@ export function calculation(project, records) {
   const lines=[], unresolved=[];
   for (const r of linked.filter(r => ['materiaal','uur'].includes(r.record_type))) {
     const d=data(r), mat=r.record_type==='materiaal';
-    const basis=d.prijsbasis || p.prijsbasis;
-    if (!mat && !['eigen','inhuur'].includes(d.arbeidstype)) { unresolved.push(r); continue; }
+    const basis=d.prijsbasis || (mat?p.materiaalprijsbasis:p.uurprijsbasis) || p.prijsbasis;
+    const labor=d.arbeidstype || p.arbeidstype;
+    if (!mat && !['eigen','inhuur'].includes(labor)) { unresolved.push(r); continue; }
+    if (!mat && labor==='inhuur' && d.kostentarief==null && p.kostentarief==null) { unresolved.push(r); continue; }
     if (!['incl','excl'].includes(basis)) { unresolved.push(r); continue; }
     const qty=number(mat?d.aantal:d.aantal_uren);
     const vat=d.btw_percentage ?? 21;
-    const buy=mat?number(d.inkoopprijs ?? 0):number(d.kostentarief ?? 0);
+    const buy=mat?number(d.inkoopprijs ?? 0):number(d.kostentarief ?? p.kostentarief ?? 0);
     const costBasis=mat?(d.inkoopbasis || p.inkoopbasis):'excl';
     if (mat && !['incl','excl'].includes(costBasis)) { unresolved.push(r); continue; }
     const sale=mat && d.prijsmodus==='opslag'
       ? round(buy/(costBasis==='incl'?1+number(vat)/100:1)*(1+number(p.marge_percentage ?? 20)/100)*(basis==='incl'?1+number(vat)/100:1))
       : number(mat?d.verkoopprijs:d.uurtarief);
-    const cost=mat?qty*buy/(costBasis==='incl'?1+number(vat)/100:1):(d.arbeidstype==='eigen'?0:qty*buy);
+    const cost=mat?qty*buy/(costBasis==='incl'?1+number(vat)/100:1):(labor==='eigen'?0:qty*buy);
     lines.push({...priceLine({name:mat?d.naam:('Arbeid — '+(d.omschrijving || 'werkzaamheden')),qty,price:sale,vat,basis,cost}),sourceId:r.id,kind:r.record_type});
   }
   const sum=k=>round(lines.reduce((a,l)=>a+l[k],0));

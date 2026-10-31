@@ -22,6 +22,9 @@ test('historical receipt opens saved amounts without recalculating tax',async()=
  assert.match(app.innerHTML,/Opgeslagen btw-bedrag/);
  assert.match(app.innerHTML,/121,00/);
  assert.doesNotMatch(app.innerHTML,/Markeer als verstuurd/);
+ assert.match(app.innerHTML,/Oud materiaal/);
+ assert.match(app.innerHTML,/100,00/);
+ assert.doesNotMatch(app.innerHTML,/Arbeid —/);
 });
 test('editing historical material does not silently select exclusive VAT',async()=>{
  await click({action:'edit',type:'materiaal',id:'m'});

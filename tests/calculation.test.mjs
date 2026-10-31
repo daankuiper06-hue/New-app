@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {priceLine,calculation,snapshot,number,escapeHtml,storedReceipt} from '../cloudflare-app/core.mjs';
+import {priceLine,calculation,snapshot,number,escapeHtml,storedReceipt,storedProjectLines} from '../cloudflare-app/core.mjs';
 const mk=(record_type,id,data,project_legacy_id=null)=>({record_type,id,legacy_id:id,data,project_legacy_id});
 const p=mk('project','p',{projectnaam:'Test',prijsbasis:'excl',inkoopbasis:'excl',marge_percentage:20});
 const customer=mk('klant','c',{naam:'Testklant'});
@@ -50,3 +50,14 @@ test('mixed tax bases calculate per line, not from a global assumption',()=>{
 });
 test('legacy labor type must be explicitly classified',()=>{const h=mk('uur','h',{aantal_uren:2,uurtarief:25},'p');assert.equal(calculation(p,[h]).unresolved.length,1)});
 test('invalid due dates cannot create document',()=>{const r=mk('materiaal','m',{aantal:1,inkoopprijs:10,verkoopprijs:12},'p');assert.throws(()=>snapshot(p,[r],mk('klant','x',{naam:'X'}),{},{nummer:'1',datum:'2026-11-01',vervaldatum:'2026-10-01'}),/vervaldatum/)});
+test('legacy detail shows saved unit prices without adding tax and respects hours toggle',()=>{
+ const m=mk('materiaal','m',{naam:'Kabel',aantal:3,verkoopprijs:12.1},'p'),h=mk('uur','h',{aantal_uren:2,uurtarief:25},'p');
+ const old={...p,data:{}};const lines=storedProjectLines(old,[m,h]);assert.equal(lines[0].amount,36.3);assert.equal(lines[0].price,12.1);assert.equal(lines[0].basis,'');assert.equal(lines[1].amount,50);assert.equal(storedProjectLines(old,[m,h],false).length,1);
+});
+test('project settings classify old lines once and preserve line-specific overrides',()=>{
+ const job={...p,data:{inkoopbasis:'excl',materiaalprijsbasis:'incl',uurprijsbasis:'excl',arbeidstype:'eigen'}};
+ const m=mk('materiaal','m',{aantal:1,inkoopprijs:50,verkoopprijs:121},'p'),h=mk('uur','h',{aantal_uren:2,uurtarief:25},'p');
+ let c=calculation(job,[m,h]);assert.equal(c.unresolved.length,0);assert.equal(c.net,150);assert.equal(c.gross,181.5);
+ m.data.prijsbasis='excl';c=calculation(job,[m,h]);assert.equal(c.net,171);
+ assert.ok(!('arbeidstype' in h.data));
+});
