@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate --schema=./prisma/schema.prisma && prisma db push --schema=./prisma/schema.prisma && next build",
+    "build": "prisma generate --schema=./prisma/schema.prisma && next build",
+    "test": "node --test tests/*.test.mjs",
     "start": "next start",
     "lint": "next lint"
   },
