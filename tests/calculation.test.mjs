@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {priceLine,calculation,snapshot,number,escapeHtml} from '../cloudflare-app/core.mjs';
+import {priceLine,calculation,snapshot,number,escapeHtml,storedReceipt} from '../cloudflare-app/core.mjs';
 const mk=(record_type,id,data,project_legacy_id=null)=>({record_type,id,legacy_id:id,data,project_legacy_id});
 const p=mk('project','p',{projectnaam:'Test',prijsbasis:'excl',inkoopbasis:'excl',marge_percentage:20});
 const customer=mk('klant','c',{naam:'Testklant'});
@@ -36,5 +36,17 @@ test('document is immutable snapshot and never includes purchase or margin',()=>
 });
 test('invalid amounts and markup inputs rejected',()=>{for(const n of [-1,NaN,Infinity,'',null,'abc'])assert.throws(()=>number(n));assert.equal(number('2,5'),2.5);assert.throws(()=>priceLine({qty:1,price:2,vat:10,basis:'excl'}));});
 test('HTML injection escaped',()=>assert.equal(escapeHtml('<img src=x onerror="evil()">'),'&lt;img src=x onerror=&quot;evil()&quot;&gt;'));
+test('legacy receipt uses saved total regardless of changed project prices',()=>{
+ const r=mk('kwitantie','k',{subtotaal:'1301.2975000000001',btw_bedrag:'0',totaal:'1301.2975000000001',include_uren:'false'});
+ const before=JSON.stringify(r),v=storedReceipt(r);assert.equal(v.total,1301.2975000000001);assert.equal(v.tax,0);assert.equal(v.includesHours,false);assert.equal(JSON.stringify(r),before);
+});
+test('missing historical amounts remain unknown; explicit zero stays zero',()=>{
+ const v=storedReceipt(mk('kwitantie','k',{totaal:'0',include_uren:'true'}));assert.equal(v.total,0);assert.equal(v.tax,null);assert.equal(v.subtotal,null);assert.equal(v.includesHours,true);
+});
+test('mixed tax bases calculate per line, not from a global assumption',()=>{
+ const m1=mk('materiaal','one',{naam:'Inclusief',aantal:1,inkoopprijs:60.5,inkoopbasis:'incl',verkoopprijs:121,prijsbasis:'incl'},'p');
+ const m2=mk('materiaal','two',{naam:'Exclusief',aantal:1,inkoopprijs:50,inkoopbasis:'excl',verkoopprijs:100,prijsbasis:'excl'},'p');
+ const c=calculation(p,[m1,m2]);assert.equal(c.net,200);assert.equal(c.tax,42);assert.equal(c.gross,242);assert.equal(c.cost,100);assert.equal(c.unresolved.length,0);
+});
 test('legacy labor type must be explicitly classified',()=>{const h=mk('uur','h',{aantal_uren:2,uurtarief:25},'p');assert.equal(calculation(p,[h]).unresolved.length,1)});
 test('invalid due dates cannot create document',()=>{const r=mk('materiaal','m',{aantal:1,inkoopprijs:10,verkoopprijs:12},'p');assert.throws(()=>snapshot(p,[r],mk('klant','x',{naam:'X'}),{},{nummer:'1',datum:'2026-11-01',vervaldatum:'2026-10-01'}),/vervaldatum/)});

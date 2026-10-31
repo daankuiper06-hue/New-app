@@ -2,6 +2,14 @@ export const money = n => new Intl.NumberFormat('nl-NL', {style:'currency', curr
 export const round = n => Math.round((n + Number.EPSILON) * 100) / 100;
 export const data = r => r?.data || {};
 export const idOf = r => r?.legacy_id || data(r).id || r?.id;
+// Legacy receipts are authoritative stored documents, not a fresh calculation.
+export function storedReceipt(r) {
+  const d=data(r);
+  const amount=k=>d[k] === undefined || d[k] === null || d[k] === '' ? null : number(d[k],k);
+  return {id:idOf(r),date:d.datum || '',customer:d.klant_naam || '',project:d.project_naam || '',
+    subtotal:amount('subtotaal'),tax:amount('btw_bedrag'),total:amount('totaal'),status:d.status || '',
+    includesHours:d.include_uren===true || d.include_uren==='true'};
+}
 export const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function number(value, label='Getal') {
   const n = typeof value === 'number' ? value : Number(String(value).trim().replace(',', '.'));
