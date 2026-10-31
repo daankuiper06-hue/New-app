@@ -68,3 +68,21 @@ test('confirmed inclusive hourly sales subtract exclusive hired costs',()=>{
  assert.equal(c.gross,70);assert.equal(c.net,57.85);assert.equal(c.cost,50);assert.equal(c.result,7.85);
  assert.equal(hired.data.aantal_uren,2);assert.equal(hired.data.uurtarief,35);
 });
+test('whitespace and boolean values cannot silently become financial zero',()=>{
+ for(const value of ['   ',true,false,[],{}])assert.throws(()=>number(value));
+});
+test('a malformed legacy line is flagged without hiding the rest of the project',()=>{
+ const broken=mk('materiaal','bad',{aantal:'abc',inkoopprijs:10,verkoopprijs:12},'p');
+ const valid=mk('materiaal','good',{aantal:1,inkoopprijs:10,verkoopprijs:12},'p');
+ const c=calculation(p,[broken,valid]);assert.equal(c.unresolved.length,1);assert.equal(c.lines.length,1);assert.equal(c.net,12);
+});
+test('document inclusion of hours controls line snapshots and their totals',()=>{
+ const m=mk('materiaal','m',{aantal:1,inkoopprijs:10,verkoopprijs:12},'p');
+ const h=mk('uur','h',{aantal_uren:2,uurtarief:25,arbeidstype:'eigen'},'p');
+ const meta={nummer:'test',datum:'2026-10-31',vervaldatum:'2026-11-10',include_uren:false};
+ const s=snapshot(p,[m,h],customer,{},meta);assert.equal(s.lines.length,1);assert.equal(s.gross,14.52);assert.equal(s.include_uren,false);
+});
+test('impossible calendar dates cannot create documents',()=>{
+ const m=mk('materiaal','m',{aantal:1,inkoopprijs:10,verkoopprijs:12},'p');
+ assert.throws(()=>snapshot(p,[m],customer,{},{nummer:'1',datum:'2026-02-30',vervaldatum:'2026-03-20'}),/documentdatum/);
+});

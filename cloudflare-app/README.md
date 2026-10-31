@@ -1,8 +1,8 @@
-# Supabase-versie voor Cloudflare
+# D Kuiper Klusbeheer Pro voor Cloudflare
 
-Dit is de doorontwikkeling van de HTML-upload, los van de oudere Next.js/Prisma-app in de repositoryroot. Niet automatisch publiceren; eerst de acceptatiepunten in `docs/ONTWIKKELPLAN.md` afronden.
+Statische webapp met de bestaande Supabase Auth en administratie. De oudere Next.js/Prisma-app in de repositoryroot is een afzonderlijke toepassing.
 
-Vanaf de repositoryroot:
+## Controleren en bouwen
 
 ```sh
 npm test
@@ -10,8 +10,16 @@ node --check cloudflare-app/app.mjs
 node scripts/build-static.mjs
 ```
 
-Host `cloudflare-app/dist` als statische bestanden via HTTPS. Open `/?demo=1` voor voorbeeldgegevens zonder Supabase-verbinding. De standaard-URL toont de bestaande Supabase-login. Er zijn geen npm-afhankelijkheden nodig voor de statische build. De Supabase-browserbibliotheek wordt via jsDelivr geladen; lettertypes via Google Fonts met lokale terugvalfonts.
+De output staat in `cloudflare-app/dist`. Cloudflare gebruikt:
 
-`core.mjs` bevat de onafhankelijk geteste berekeningen. `app.mjs` bevat formulieren, auth en recordopslag. Bestaande JSON-velden blijven behouden bij bewerken. Alle databaseverzoeken zijn gericht op `klusbeheer_records` en het account van de ingelogde gebruiker. RLS moet ook op de server correct zijn ingericht; de browser kan dat niet afdwingen.
+```sh
+npx wrangler@4 deploy --config cloudflare-app/wrangler.jsonc
+```
 
-Opslaan van facturen voegt alleen een nieuw record toe. Er worden geen e-mails verstuurd. De knoppen voor verstuurd/betaald registreren de administratieve status; betalingen worden niet uitgevoerd. Afdrukken/PDF gebruikt de browserafdrukfunctie.
+De bestaande productiebranch is `development/supabase-klusbeheer-pro`. Nieuwe publicaties volgen alleen binnen de door de eigenaar gegeven toestemming. Een eerdere Cloudflare-versie kan worden teruggezet zonder bestaande records te verwijderen.
+
+De standaard-URL gebruikt Supabase; `?demo=1` gebruikt uitsluitend voorbeeldgegevens in lokale browseropslag. De demo bewijst geen databasebeveiliging. De opslagacceptatie staat in `docs/ACCEPTATIE_HERSTEL.md`.
+
+`core.mjs` verzorgt berekeningen en vaste documentkopieën; `app.mjs` de formulieren en eigenaargebonden opslag. Calculatieregels zijn begrotingen en veranderen de uitgevoerde klus niet. Archiveren bewaart gegevens. Statusknoppen registreren administratie en versturen geen e-mails of betalingen.
+
+Oude kwitantietotalen worden niet herberekend. Bij afwijkende huidige klusregels wordt geen fictieve historische afdrukspecificatie gemaakt. Een nieuw kostenoverzicht kan vanuit de klus worden opgeslagen.
