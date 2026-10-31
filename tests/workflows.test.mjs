@@ -95,3 +95,22 @@ test('a missing job link can be repaired in both normalized and legacy fields',a
  await click({action:'linkorphan',id:'orphan',type:'materiaal'});await submit('link-orphan',{project_id:'p'});
  assert.equal(record('orphan').project_legacy_id,'p');assert.equal(record('orphan').data.project_id,'p');
 });
+test('create and edit client, product, employee and job records preserving extra fields',async()=>{
+ await click({action:'new',type:'klant',id:''});await submit('edit',{naam:'Nieuwe klant',email:'test@example.com',adres:'Teststraat'});
+ const client=rows().find(r=>r.data.naam==='Nieuwe klant');assert.ok(client);
+ await click({action:'edit',type:'klant',id:'unused'});await submit('edit',{naam:'Gewijzigde naam'});assert.equal(record('unused').data.extra,'behouden');
+ await click({action:'new',type:'product',id:''});await submit('edit',{naam:'Bibliotheekkabel',inkoopprijs:'6.5',verkoopprijs:'7.8',prijsbasis:'incl',inkoopbasis:'incl',btw_percentage:'21',eenheid:'m'});assert.ok(rows().find(r=>r.data.naam==='Bibliotheekkabel'));
+ await click({action:'new',type:'medewerker',id:''});await submit('edit',{naam:'Nieuwe monteur',arbeidstype:'inhuur',uurtarief:'35',kostentarief:'25',prijsbasis:'incl'});assert.ok(rows().find(r=>r.data.naam==='Nieuwe monteur'));
+ await click({action:'new',type:'project',id:''});await submit('edit',{projectnaam:'Nieuwe klus',klant_id:client.legacy_id,datum:'2026-10-31',marge_percentage:'20',prijsbasis:'incl',inkoopbasis:'incl',kostentarief:''});
+ const job=rows().find(r=>r.data.projectnaam==='Nieuwe klus');assert.ok(job);assert.equal(job.data.kostentarief,null);
+ await click({action:'new',type:'materiaal',id:job.legacy_id});await submit('edit',{naam:'Nieuw materiaal',aantal:'20',inkoopprijs:'6.5',verkoopprijs:'6.5',prijsmodus:'opslag',prijsbasis:'incl',inkoopbasis:'incl',btw_percentage:'21'});
+ assert.equal(error.textContent,'');assert.match(app.innerHTML,/156,00/);
+ const employee=rows().find(r=>r.data.naam==='Nieuwe monteur');
+ await click({action:'new',type:'uur',id:job.legacy_id});await submit('edit',{medewerker_id:employee.legacy_id,datum:'2026-10-31',aantal_uren:'2',uurtarief:'35',kostentarief:'25',arbeidstype:'inhuur',prijsbasis:'incl',btw_percentage:'21'});
+ assert.equal(error.textContent,'');assert.match(app.innerHTML,/Nieuwe monteur/);assert.match(app.innerHTML,/50,00/);
+});
+test('work order completion and reopening do not create paid invoices',async()=>{
+ const doc=rows().find(r=>r.data.nummer==='WORK-1');
+ await click({action:'opendoc',id:doc.legacy_id});await click({action:'docstatus',id:doc.legacy_id});assert.equal(record(doc.legacy_id).data.status,'Afgerond');
+ await click({action:'docstatus',id:doc.legacy_id});assert.equal(record(doc.legacy_id).data.status,'Concept');assert.equal(record(doc.legacy_id).data.betaald_op,null);
+});
